@@ -1,0 +1,441 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <map>   
+#include <iomanip>
+#include <ctime>  
+#include <cstdlib>
+#include <fstream>
+using namespace std;
+class ServiceEntity {
+public:
+    virtual void showDetails() const = 0;  // Pure virtual function
+};
+
+// Class representing a menu item
+class MenuItem {
+public:
+    string name;
+    double price;
+
+    MenuItem(const string &itemName, double itemPrice) : name(itemName), price(itemPrice) {}
+};
+
+// Derived class for Restaurant
+class Restaurant : public ServiceEntity {
+public:
+    string name;
+    vector<MenuItem> menu;
+
+    Restaurant(const string &restaurantName, const vector<MenuItem> &menuItems)
+        : name(restaurantName), menu(menuItems) {}
+
+    void showDetails() const override {
+        cout << "\n--- " << name << " Menu ---" << endl;
+        for (size_t i = 0; i < menu.size(); i++) {
+            cout << i + 1 << ". " << menu[i].name << " - Rs." << fixed << setprecision(2) << menu[i].price << endl;
+        }
+    }
+
+    const MenuItem& getItem(int itemIndex) const {
+        return menu[itemIndex];
+    }
+};
+
+class DeliveryPerson : public ServiceEntity {
+public:
+    string name;
+
+    DeliveryPerson(const string &personName) : name(personName) {}
+
+    void showDetails() const override {
+        cout << "Delivery Person: " << name << endl;
+    }
+};
+
+// Order class that manages placing an order from multiple restaurants
+class Order {
+private:
+    string customerName;
+    map<string, map<string, int>> itemsOrdered;  // Restaurant name -> (Item name -> Quantity)
+    map<string, double> itemPrices;              // Item name -> Price
+    double totalCost;
+
+public:
+    Order(const string &customer) : customerName(customer), totalCost(0.0) {}
+
+    void addItem(const Restaurant &restaurant, int itemIndex, int quantity) {
+        const MenuItem &item = restaurant.getItem(itemIndex - 1);
+        itemsOrdered[restaurant.name][item.name] += quantity;
+        itemPrices[item.name] = item.price;
+        totalCost += item.price * quantity;
+        cout << quantity << "x " << item.name << " added to the order from " << restaurant.name << "." << endl;
+    }
+
+    void showOrderSummary() const {
+        cout << "\n--- Order Summary ---" << endl;
+        for (const auto &rest : itemsOrdered) {
+            cout << "Restaurant: " << rest.first << endl;
+            for (const auto &item : rest.second) {
+                cout << "  " << item.first << " x" << item.second 
+                     << " - Rs." << fixed << setprecision(2) << itemPrices.at(item.first) * item.second << endl;
+            }
+        }
+        cout << "Total Cost: Rs." << fixed << setprecision(2) << totalCost << endl;
+    }
+
+    void assignDelivery(const DeliveryPerson &deliveryPerson) const {
+        cout << "Order assigned to " << deliveryPerson.name << " for delivery!" << endl;
+    }
+};
+
+// Main application to manage restaurants, orders, and deliveries
+class Bistrobee {
+private:
+    vector<Restaurant> restaurants;
+    vector<DeliveryPerson> deliveryPersons;
+
+public:
+    Bistrobee() {
+        // Initialize with some sample data
+        restaurants={{"The Cozy Fork", {{"Creamy Tomato Basil Soup", 590}, {"Classic Caesar Salad", 760}, {"Grilled Herb Chicken Sandwich", 1095}, {"Triple Chocolate Brownie", 420}, {"Cheese Stuffed Garlic Bread", 505}, {"Baked Mac and Cheese", 925}, {"Classic Pancakes with Maple Syrup", 675}}},
+            {"Spice Symphony", {{"Tandoori Chicken Tikka", 1265}, {"Spicy Szechuan Noodles", 1010}, {"Jamaican Jerk Shrimp", 1430}, {"Mango Lassi", 420}, {"Paneer Butter Masala", 1010}, {"Thai Green Curry with Jasmine Rice", 1095}, {"Churros with Chocolate Dip", 505}}},
+            {"Ocean Bounty", {{"Grilled Lobster Tail", 2530}, {"Clam Chowder in Sourdough Bread", 1095}, {"Seared Scallops with Lemon Butter", 2110}, {"Fish Tacos with Mango Salsa", 1180}, {"Shrimp Cocktail", 925}, {"Salmon Sushi Platter", 1430}, {"Lemon Tart", 505}}},
+            {"Garden Fresh Bistro", {{"Avocado Toast with Poached Egg", 840}, {"Quinoa Kale Salad", 925}, {"Veggie Hummus Wrap", 760}, {"Matcha Green Tea Latte", 505}, {"Vegan Buddha Bowl", 1010}, {"Sweet Potato Fries", 505}, {"Chia Seed Pudding", 590}}},
+            {"Flame & Smoke BBQ", {{"Slow-Smoked Brisket", 1685}, {"BBQ Pulled Pork Sandwich", 1095}, {"Hickory-Smoked Ribs", 1940}, {"Sweet Cornbread", 335}, {"Grilled Corn on the Cob", 420}, {"BBQ Chicken Wings", 1010}, {"S'mores Brownies", 505}}},
+            {"Sweet Haven Bakery", {{"Classic Croissant", 335}, {"Blueberry Cheesecake", 590}, {"Red Velvet Cupcake", 420}, {"Mocha Espresso", 375}, {"Chocolate Chip Cookies", 335}, {"Banana Walnut Loaf", 420}, {"Lemon Drizzle Cake", 505}}},
+            {"Fusion Fiesta", {{"Korean BBQ Tacos", 1010}, {"Pad Thai Pizza", 1180}, {"Chipotle Sushi Rolls", 1265}, {"Nutella-Banana Spring Rolls", 675}, {"Spicy Ramen Bowl", 925}, {"Kimchi Fried Rice", 840}, {"Matcha Cheesecake", 505}}},
+            {"Urban Grind Cafe", {{"Espresso Macchiato", 335}, {"Avocado & Smoked Salmon Bagel", 1095}, {"Oatmeal with Fresh Berries", 675}, {"Carrot Cake Slice", 505}, {"Iced Caramel Latte", 420}, {"Almond Croissant", 505}, {"Chocolate Fudge Cake", 590}}},
+            {"The Rustic Table", {{"Farmhouse Veggie Pizza", 1180}, {"Roasted Chicken Pot Pie", 1095}, {"Garlic Butter Mashed Potatoes", 590}, {"Pecan Pie", 505}, {"Roasted Veggie Lasagna", 1095}, {"Herb-Crusted Salmon", 1510}, {"Apple Crumble", 590}}},
+            {"The Midnight Snack Shack", {{"Loaded Nachos", 840}, {"Crispy Chicken Wings", 1095}, {"Chocolate Milkshake", 420}, {"Cheeseburger Sliders", 925}, {"Mozzarella Sticks", 675}, {"Pepperoni Pizza Bites", 840}, {"Oreo Ice Cream Sundae", 505}}},
+            {"Pizza Palace", {{"Pepperoni Pizza", 399}, {"Veggie Pizza", 299}, {"Cheese Pizza", 499}}},
+            {"Burger Haven", {{"Cheeseburger", 299}, {"Veggie Burger", 199}, {"Fries", 99}}},
+            {"Sushi Spot", {{"California Roll", 199}, {"Spicy Tuna Roll", 299}, {"Tempura", 199}}},
+            {"Bucket Biryani", {{"Full birayani", 599}, {"Veg Biryani", 299}, {"Chicken Matka Biryani", 399}}},
+            {"Dessert Hut", {{"Kesari Bath", 149}, {"Halwa", 129}, {"Mysore Pak", 159}}}
+        };
+		deliveryPersons.push_back(DeliveryPerson("John"));
+        deliveryPersons.push_back(DeliveryPerson("Alex"));	
+        deliveryPersons.push_back(DeliveryPerson("Maria"));
+        deliveryPersons.push_back(DeliveryPerson("Gary"));
+		deliveryPersons.push_back(DeliveryPerson("Matt"));
+		deliveryPersons.push_back(DeliveryPerson("Maritna")); 
+    }
+
+    void displayRestaurants() const {
+        cout << "\n--- Available Restaurants ---" << endl;
+        for (size_t i = 0; i < restaurants.size(); i++) {
+            cout << i + 1 << ". " << restaurants[i].name << endl;
+        }
+    }
+
+    void placeOrder() {
+        string customerName;
+        int restaurantChoice, itemNumber, quantity;
+
+        Order order(customerName);
+        char moreItems;
+
+        do {
+            displayRestaurants();
+            cout << "Select a restaurant by number: ";
+            cin >> restaurantChoice;
+
+            if (restaurantChoice < 1 || restaurantChoice > restaurants.size()) {
+                cout << "Invalid restaurant choice!" << endl;
+                continue;
+            }
+
+            Restaurant &selectedRestaurant = restaurants[restaurantChoice - 1];
+            selectedRestaurant.showDetails();
+
+            cout << "\nEnter item number to add to order: ";
+            cin >> itemNumber;
+            cout << "Enter quantity: ";
+            cin >> quantity;
+            order.addItem(selectedRestaurant, itemNumber, quantity);
+
+            cout << "Do you want to add more items? (y/n): ";
+            cin >> moreItems;
+        } while (moreItems == 'y' || moreItems == 'Y');
+
+        order.showOrderSummary();
+
+        // Assign a random delivery person
+        srand(time(0));
+        int deliveryPersonIndex = rand() % deliveryPersons.size();
+        order.assignDelivery(deliveryPersons[deliveryPersonIndex]);
+
+        cout << "\nThank you for ordering with Bistrobee!" << endl;
+    }
+};
+
+class LoginSystem 
+{
+private:
+    map<string, string> users;
+    const string filename = "users.txt";
+    void loadUsersFromFile() 
+    {
+        ifstream infile(filename);
+        string username, password;
+        while (infile >> username >> password) 
+        {
+            users[username] = password;
+        }
+        infile.close();
+    }
+    void saveUsersToFile() 
+    {
+        ofstream outfile(filename);
+        for (const auto &user : users) 
+        {
+            outfile << user.first << " " << user.second << endl;
+        }
+        outfile.close();
+    }
+
+public:
+    LoginSystem() 
+    {
+        loadUsersFromFile();
+        for (int i = 10505; i <= 10580; ++i) {
+            string username = "AP231100" + to_string(i);
+            if (users.find(username) == users.end()) {
+                users[username] = username;  // Set password same as username
+            }
+        }
+        
+    }
+
+    bool authenticateUser(const string &username, const string &password) {
+        if (users.find(username) != users.end() && users[username] == password) {
+            return true;
+        }
+        return false;
+    }
+
+
+    void login() {
+        string username, password;
+        bool authenticated = false;
+
+        while (!authenticated) {
+            int choice;
+            cout << "\n\t\t--- Welcome to Bistrobee ---\t\t\n" << endl;
+            cout << "1. Login\nEnter choice: ";
+            cin >> choice;
+
+            if (choice == 1) {
+                cout << "Username: ";
+                cin >> username;
+                cout << "Password: ";
+                cin >> password;
+
+                if (authenticateUser(username, password)) {
+                    cout << "Login successful!" << endl;
+                    if (username == "AP23110010505") {
+                        cout << "Welcome, PAPPULA GUNAVANTH REDDY!" << endl;
+                    }
+                    if (username == "AP23110010506") {
+                        cout << "Welcome, ARAVELLI JAHNAVI JYOTIRMAYI!" << endl;
+                    }
+                    if (username == "AP23110010507") {
+                        cout << "Welcome, SOMAVARAPU SAI DINESH!" << endl;
+                    }
+                    if (username == "AP23110010508") {
+                        cout << "Welcome, POTLURI NAGA VENKATA PRANEETH!" << endl;
+                    }
+                    if (username == "AP23110010509") {
+                        cout << "Welcome, ANJALI DESAI!" << endl;
+                    }
+					if (username == "AP23110010511") {
+                        cout << "Welcome, PUCHHALA YASWANTH VIJAY KUMAR!" << endl;
+                    }
+					if (username == "AP23110010513") {
+                        cout << "Welcome, SHAIK MOHAMMAD SUHEAL!" << endl;
+                    }
+                    if (username == "AP23110010515") {
+                        cout << "Welcome, RATAN RAJ!" << endl;
+                    }
+                    if (username == "AP23110010516") {
+                        cout << "Welcome, SIDDI SATHVIK KURUBA!" << endl;
+                    }
+					if (username == "AP23110010517") {
+                        cout << "Welcome, SHAIK SANIYA HASEEN!" << endl;
+                    }
+					if (username == "AP23110010518") {
+                        cout << "Welcome, DEEVELA JASMITHA!" << endl;
+                    }
+                    if(username=="AP23110010519"){
+                    	cout<<"Welcome, RAJESH PONNADA!"<<endl;
+					}
+					if (username == "AP23110010521") {
+                        cout << "Welcome, YARRAMSETTY KALYAN!" << endl;
+                	}
+                    if (username == "AP23110010522") {
+                        cout << "Welcome, SHAIK KAISAR PARVEZ!" << endl;
+                    }
+                    if (username == "AP23110010523") {
+                        cout << "Welcome, KONDA CHANDANI!" << endl;
+                    }
+                    if (username == "AP23110010524") {
+                        cout << "Welcome, KOPPARAPU S V V RAGA SREE!" << endl;
+                    }
+                    if (username == "AP23110010526") {
+                        cout << "Welcome, TALLURI SRI NANDAN!" << endl;
+                    }
+                    if (username == "AP23110010527") {
+                        cout << "Welcome, JILAKARA LOKESH!" << endl;
+                    }
+                    if (username == "AP23110010528") {
+                        cout << "Welcome, PONNURU VENKATA NAGA SAI YASWANTH!" << endl;
+                    }
+                    if (username == "AP23110010529") {
+                        cout << "Welcome, THADIKONDA JOYSON!" << endl;
+                    }
+					if (username == "AP23110010530") {
+                        cout << "Welcome, YENIGALLA KARTHIKEY KRISHNA!" << endl;
+                    }
+                    if (username == "AP23110010531") {
+                        cout << "Welcome, PATHANGE HEMA NAGA SUDARSHAN!" << endl;
+                    }
+                    if (username == "AP23110010533") {
+                        cout << "Welcome, VADLAMUDI KARTHIKEYA!" << endl;
+                    }
+                    if (username == "AP23110010534") {
+                        cout << "Welcome, VELURI RAMANAIDU!" << endl;
+                    }
+                    if (username == "AP23110010535") {
+                        cout << "Welcome, ALLE ASHWIN!" << endl;
+                    }
+                    if (username == "AP23110010536") {
+                        cout << "Welcome, MANNAM SREE BINDHU!" << endl;
+                    }
+                    if (username == "AP23110010538") {
+                        cout << "Welcome, SHAIK RABBANI!" << endl;
+                	}
+                    if (username == "AP23110010539") {
+                        cout << "Welcome, BONAM VEDA RUSHITHA!" << endl;
+                    }
+                    if (username == "AP23110010540") {
+                        cout << "Welcome, BALIVADA SHRIYA RAO!" << endl;
+                    }
+                    if (username == "AP23110010541") {
+                        cout << "Welcome, PALLAPATI SUJITH!" << endl;
+                    }
+                    if (username == "AP23110010542") {
+                        cout << "Welcome, RASAMSETTI GNANA PRUDHVI!" << endl;
+                    }
+                    if (username == "AP23110010543") {
+                        cout << "Welcome, MYTHILI NAGAVALLI NANDAMURI!" << endl;
+                    }
+                    if (username == "AP23110010544") {
+                        cout << "Welcome, BALUSUPATI BHAVIGNA!" << endl;
+                    }
+                    if (username == "AP23110010545") {
+                        cout << "Welcome, KOPPAKU VAMSI CHANDU!" << endl;
+                    }
+                    if (username == "AP23110010546") {
+                        cout << "Welcome, GOGULA BALAJI BHAVANI SHANKAR!" << endl;
+                    }
+                    if (username == "AP23110010547") {
+                        cout << "Welcome, CHEETHIRALA VARSHINI!" << endl;
+                    }
+                    if (username == "AP23110010548") {
+                        cout << "Welcome, AYUSH KUMAR GIRI!" << endl;
+                    }
+					if (username == "AP23110010550") {
+                	    cout << "Welcome, BATHULA VENKATA ASHA!" << endl;
+                    }
+                    if (username == "AP23110010551") {
+                        cout << "Welcome, VENIGALLA SUBHAS!" << endl;
+                    }
+                    if (username == "AP23110010552") {
+                        cout << "Welcome, KALLA NAVYATHA!" << endl;
+                    }
+                    if (username == "AP23110010553") {
+                        cout << "Welcome, KOSURI YESWANTH!" << endl;
+                    }
+                    if (username == "AP23110010554") {
+                        cout << "Welcome, SHAIK MUKHTAR AHMED!" << endl;
+                    }
+					if (username == "AP23110010555") {
+                        cout << "Welcome, KOMMANA ANIL KUMAR!" << endl;
+                    }
+                    if (username == "AP23110010557") {
+                        cout << "Welcome, SUGGULA JYOTHI SAI PRIYA!" << endl;
+                    }
+                    if (username == "AP23110010558") {
+                        cout << "Welcome, NAMAN UPADHAYA!" << endl;
+                    }
+                    if (username == "AP23110010559") {
+                        cout << "Welcome, PALLE HEMANTH PATEL!" << endl;
+                    }
+					if (username == "AP23110010560") {
+                        cout << "Welcome, KURAM SAI SIDDHARTHA!" << endl;
+                    }
+					if (username == "AP23110010561") {
+                        cout << "Welcome, GALLA PURNESH!" << endl;
+                    }
+                    if (username == "AP23110010562") {
+                        cout << "Welcome, CHAVA VYSHNAVI!" << endl;
+                    }
+                    if (username == "AP23110010563") {
+                        cout << "Welcome, VUPPU KISHORE!" << endl;
+                    }
+                    if (username == "AP23110010564") {
+                        cout << "Welcome, ANANTHAPALLI VENKATA NAGA SAI VISWAJ!" << endl;
+                    }
+					if (username == "AP23110010565") {
+                        cout << "Welcome, DOKUPARTHY VENKATA PRABATH!" << endl;
+                    }
+                    if (username == "AP23110010567") {
+                        cout << "Welcome, KALISETTY MANJARI!" << endl;
+                    }
+                    if (username == "AP23110010568") {
+                       cout << "Welcome, ADAPA SAI KISHORE!" << endl;
+                    }
+					if (username == "AP23110010569") {
+                        cout << "Welcome, SHAIK ISMAEL!" << endl;
+                    }
+                    if (username == "AP23110010570") {
+                        cout << "Welcome, JONNALAGADDA LAKSHMI MANASA!" << endl;
+                    }
+                    if (username == "AP23110010571") {
+                        cout << "Welcome, VEMULA RAHUL!" << endl;
+                    }
+					if (username == "AP23110010573") {
+                        cout << "Welcome, KODURU ADITHYA!" << endl;
+                    }
+                    if (username == "AP23110010574") {
+                        cout << "Welcome, AKSHAT UPADHYAY!" << endl;
+                    }
+                    if (username == "AP23110010578") {
+                        cout << "Welcome, NAVANIT REDDY TURPINTI!" << endl;
+                    }
+                    if (username == "AP23110010579") {
+                        cout << "Welcome, DONTAMSETTY LALITH MANOJ!" << endl;
+                    }
+                    if (username == "AP23110010580") {
+                        cout << "Welcome, DUDDUKURI VENKATA VAMSI!" << endl;
+                    }
+                    authenticated = true;
+                    
+                } else {
+                    cout << "Invalid username or password. Please try again." << endl;
+                }
+            } else {
+                cout << "Invalid choice. Please select 1 for Login" << endl;
+            }
+        }
+    }
+};
+
+int main() {
+    LoginSystem loginSystem;
+    loginSystem.login();
+    Bistrobee app;
+    app.placeOrder();
+	return 0;
+}
