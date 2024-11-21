@@ -1,0 +1,260 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+class MenuItem {
+public:
+    string name;
+    double price;
+
+    MenuItem(const string &itemName, double itemPrice) : name(itemName), price(itemPrice) {}
+};
+
+class Restaurant {
+public:
+    string name;
+    vector<MenuItem> menu;
+
+    Restaurant(const string &restaurantName) : name(restaurantName) {}
+
+    void addItem(const string &itemName, double itemPrice) {
+        menu.emplace_back(itemName, itemPrice);
+    }
+
+    void showDetails() const {
+        cout << "\n--- " << name << " Menu ---" << endl;
+        for (size_t i = 0; i < menu.size(); i++) {
+            cout << i + 1 << ". " << menu[i].name << " - Rs." << fixed << setprecision(2) << menu[i].price << endl;
+        }
+    }
+};
+
+class Order {
+private:
+    string customerName;
+    map<string, map<string, int>> itemsOrdered;
+    map<string, double> itemPrices;
+    double totalCost;
+
+public:
+    Order(const string &customer) : customerName(customer), totalCost(0.0) {}
+
+    void addItem(const Restaurant &restaurant, int itemIndex, int quantity) {
+        const MenuItem &item = restaurant.menu[itemIndex - 1];
+        itemsOrdered[restaurant.name][item.name] += quantity;
+        itemPrices[item.name] = item.price;
+        totalCost += item.price * quantity;
+        cout << quantity << "x " << item.name << " added to the order from " << restaurant.name << "." << endl;
+    }
+
+    void showOrderSummary() const {
+        cout << "\n--- Order Summary ---" << endl;
+        for (const auto &rest : itemsOrdered) {
+            cout << "Restaurant: " << rest.first << endl;
+            for (const auto &item : rest.second) {
+                cout << "  " << item.first << " x" << item.second
+                     << " - Rs." << fixed << setprecision(2) << itemPrices.at(item.first) * item.second << endl;
+            }
+        }
+        cout << "Total Cost: Rs." << fixed << setprecision(2) << totalCost << endl;
+    }
+};
+
+class Bistrobee {
+private:
+    vector<Restaurant> restaurants;
+
+public:
+    void addRestaurant(const string &restaurantName) {
+        restaurants.emplace_back(restaurantName);
+        cout << "Restaurant \"" << restaurantName << "\" added successfully!" << endl;
+    }
+
+    Restaurant &getRestaurant(int index) {
+        return restaurants[index];
+    }
+
+    void displayRestaurants() const {
+        if (restaurants.empty()) {
+            cout << "\nNo restaurants available.\n";
+            return;
+        }
+        cout << "\n--- Available Restaurants ---" << endl;
+        for (size_t i = 0; i < restaurants.size(); i++) {
+            cout << i + 1 << ". " << restaurants[i].name << endl;
+        }
+    }
+
+    void placeOrder(const string &customerName) {
+        if (restaurants.empty()) {
+            cout << "No restaurants available to order from.\n";
+            return;
+        }
+
+        Order order(customerName);
+        char moreItems;
+
+        do {
+            displayRestaurants();
+            int restaurantChoice, itemNumber, quantity;
+            cout << "Select a restaurant by number: ";
+            cin >> restaurantChoice;
+
+            if (restaurantChoice < 1 || restaurantChoice > restaurants.size()) {
+                cout << "Invalid restaurant choice!" << endl;
+                continue;
+            }
+
+            Restaurant &selectedRestaurant = restaurants[restaurantChoice - 1];
+            selectedRestaurant.showDetails();
+
+            cout << "\nEnter item number to add to order: ";
+            cin >> itemNumber;
+            cout << "Enter quantity: ";
+            cin >> quantity;
+            order.addItem(selectedRestaurant, itemNumber, quantity);
+
+            cout << "Do you want to add more items? (y/n): ";
+            cin >> moreItems;
+        } while (moreItems == 'y' || moreItems == 'Y');
+
+        order.showOrderSummary();
+    }
+
+    void manageRestaurant(const string &ownerName) {
+        char option;
+        do {
+            cout << "\n--- Restaurant Management ---\n";
+            cout << "1. Add a Restaurant\n2. Add Items to a Restaurant\n3. Exit\n";
+            cout << "Enter your choice: ";
+            cin >> option;
+
+            if (option == '1') {
+                string restaurantName;
+                cout << "Enter the name of the restaurant: ";
+                cin.ignore();
+                getline(cin, restaurantName);
+                addRestaurant(restaurantName);
+            } else if (option == '2') {
+                if (restaurants.empty()) {
+                    cout << "No restaurants available to add items to.\n";
+                    continue;
+                }
+                displayRestaurants();
+                int restaurantChoice;
+                cout << "Select a restaurant by number: ";
+                cin >> restaurantChoice;
+
+                if (restaurantChoice < 1 || restaurantChoice > restaurants.size()) {
+                    cout << "Invalid restaurant choice!\n";
+                    continue;
+                }
+
+                Restaurant &selectedRestaurant = getRestaurant(restaurantChoice - 1);
+                string itemName;
+                double itemPrice;
+                cout << "Enter the item name: ";
+                cin.ignore();
+                getline(cin, itemName);
+                cout << "Enter the item price: ";
+                cin >> itemPrice;
+                selectedRestaurant.addItem(itemName, itemPrice);
+                cout << "Item added successfully to \"" << selectedRestaurant.name << "\".\n";
+            }
+        } while (option != '3');
+    }
+};
+
+class LoginSystem {
+private:
+    map<string, string> customers;
+    map<string, string> restaurantOwners;
+
+public:
+    bool login(const map<string, string> &userMap, const string &userType, string &username) {
+        string password;
+        cout << "\n--- " << userType << " Login ---\n";
+        cout << "Username: ";
+        cin >> username;
+        cout << "Password: ";
+        cin >> password;
+
+        auto it = userMap.find(username);
+        if (it != userMap.end() && it->second == password) {
+            cout << "Login successful!\n";
+            return true;
+        }
+        cout << "Invalid username or password.\n";
+        return false;
+    }
+
+    bool signUp(map<string, string> &userMap, const string &userType) {
+        string username, password;
+        cout << "\n--- " << userType << " Sign Up ---\n";
+        cout << "Enter username: ";
+        cin >> username;
+        cout << "Enter password: ";
+        cin >> password;
+
+        if (userMap.find(username) != userMap.end()) {
+            cout << "Username already exists.\n";
+            return false;
+        }
+        userMap[username] = password;
+        cout << userType << " account created successfully!\n";
+        return true;
+    }
+
+    bool loginCustomer(string &username) {
+        return login(customers, "Customer", username);
+    }
+
+    bool loginRestaurantOwner(string &username) {
+        return login(restaurantOwners, "Restaurant Owner", username);
+    }
+
+    void signUpCustomer() {
+        signUp(customers, "Customer");
+    }
+
+    void signUpRestaurantOwner() {
+        signUp(restaurantOwners, "Restaurant Owner");
+    }
+};
+
+int main() {
+    Bistrobee app;
+    LoginSystem loginSystem;
+
+    while (true) {
+        cout << "\n--- Bistrobee ---\n";
+        cout << "1. Customer Login\n2. Customer Sign Up\n";
+        cout << "3. Restaurant Owner Login\n4. Restaurant Owner Sign Up\n";
+        cout << "5. Exit\nEnter your choice: ";
+
+        int choice;
+        cin >> choice;
+
+        if (choice == 1) {
+            string customerName;
+            if (loginSystem.loginCustomer(customerName)) {
+                app.placeOrder(customerName);
+            }
+        } else if (choice == 2) {
+            loginSystem.signUpCustomer();
+        } else if (choice == 3) {
+            string ownerName;
+            if (loginSystem.loginRestaurantOwner(ownerName)) {
+                app.manageRestaurant(ownerName);
+            }
+        } else if (choice == 4) {
+            loginSystem.signUpRestaurantOwner();
+        } else if (choice == 5) {
+            cout << "Thank you for using Bistrobee. Goodbye!\n";
+            break;
+        } else {
+            cout << "Invalid choice. Try again.\n";
+        }
+    }
+
+    return 0;
+}
